@@ -208,7 +208,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=five
       }else if(data[count1_ha,count1_li]=="5000-9999"){
         data[count1_ha,count1_li]=six
-      }else if(data[count1_ha,count1_li]==">10000"){
+      }else if(data[count1_ha,count1_li]=="10000"){
         data[count1_ha,count1_li]=sever
       }else {
         data[count1_ha,count1_li]=unknown
