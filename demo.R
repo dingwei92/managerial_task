@@ -70,7 +70,7 @@ for (i in data){ #遍历数据 将数据中的null值赋值
   }
 }
 
-unknown=-1 # 变量
+unknown=-1 # 数据转换对应的数值变量
 zero=0  
 one=1
 two=2
@@ -85,7 +85,7 @@ for (i in data){  #遍历数据 将数据数字化
   count1_li=count1_li+1
   count1_ha=1 #定义行数
   for(j in i){
-    if(count1_li==2) { 
+    if(count1_li==2) { # gender列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="Male"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="Female"){
@@ -94,7 +94,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==3) {
+    if(count1_li==3) {  # relevent_experience列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="No relevent experience"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="No relevent experience"){
@@ -105,7 +105,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==4) {
+    if(count1_li==4) {  # enrolled_university列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="no_enrollment"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="Part time course"){
@@ -116,7 +116,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==5) {
+    if(count1_li==5) {  # education_level列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="Graduate"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="Masters"){
@@ -131,7 +131,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==6) {
+    if(count1_li==6) {  # major_discipline列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="STEM"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="Humanities"){
@@ -144,7 +144,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==7) {
+    if(count1_li==7) {  # experience列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="1"){
         data[count1_ha,count1_li]=1
       }else if(data[count1_ha,count1_li]=="2"){
@@ -193,7 +193,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==8) {
+    if(count1_li==8) {  # company_size列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="<10"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="10-49"){
@@ -214,7 +214,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==9) {
+    if(count1_li==9) {  # company_type列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="Pvt Ltd"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="Funded Startup"){
@@ -229,7 +229,7 @@ for (i in data){  #遍历数据 将数据数字化
         data[count1_ha,count1_li]=unknown
       }
     }
-    if(count1_li==10) {
+    if(count1_li==10) {  # last_new_job列 将字符串类型变成数值
       if(data[count1_ha,count1_li]=="never"){
         data[count1_ha,count1_li]=zero
       }else if(data[count1_ha,count1_li]=="1"){
