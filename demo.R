@@ -1,8 +1,11 @@
 #清理当前工作空间
 rm(list=ls())	
-
+library(dplyr)  #导入dplyr包 功能数据关联查询
 #读取数据
 data=read.csv("/Users/dingwei/研究生/管理统计/作业/aug_train.csv",header=T)  #读取csv格式的数据，并赋值给data
+data_test=read.csv("/Users/dingwei/研究生/管理统计/作业/aug_test.csv",header=T)  #读取csv——test格式的数据，并赋值给data_test
+data_sample=read.csv("/Users/dingwei/研究生/管理统计/作业/sample_submission.csv",header=T)  #读取csv——sample格式的数据，并赋值给data_sample
+data_test=left_join(data_test,data_sample,by="enrollee_id") #data_test左关联查询data_sample  根据enrollee_id
 
 #数据清理
 data=data[,-(1:2)]  #删除第1列到第2列的数据（-:代表删除（*，*）第1个*表示行，第2个*表示列）
@@ -249,5 +252,6 @@ for (i in data){  #遍历数据 将数据数字化
     count1_ha=count1_ha+1 
   }
 }
+# print(data[c(1:20),])
 print(data)
 
