@@ -1,3 +1,11 @@
+---
+title: "task"
+output: html_document
+---
+
+## 数据清理
+
+```{r setup}
 #清理当前工作空间
 rm(list=ls())	
 
@@ -14,7 +22,6 @@ data_train=data_train[,-(1:2)]
 
 names(data)=c("city_dev","gender","expenience","university","edu_level","major","expenience_year","company_size","company_type","jobs","train_hours","target") #重新命名
 names(data_train)=c("city_dev","gender","expenience","university","edu_level","major","expenience_year","company_size","company_type","jobs","train_hours","target") #重新命名
-
 
 #构造一个函数 参数v-一列数据 功能--获取数据中的众数）
 getmode <- function(v) { 
@@ -45,7 +52,7 @@ data[which(data$expenience_year==""),"expenience_year"] = expenience_year_med # 
 data[which(data$company_size==""),"company_size"] = company_size_med # 为空的补上max值
 data[which(data$company_type==""),"company_type"] = company_type_med # 为空的补上max值
 data[which(data$jobs==""),"jobs"] = jobs_med # 为空的补上max值
-data$train_hours=scale(data$train_hours)
+data$train_hours=scale(data$train_hours) # 数据归一化，为了和测试发展指数量纲统一
 
 # 测试数据
 data_train[which(data_train$gender==""),"gender"] = gender_med # 为空的补上max值
@@ -57,7 +64,7 @@ data_train[which(data_train$expenience_year==""),"expenience_year"] = expenience
 data_train[which(data_train$company_size==""),"company_size"] = company_size_med # 为空的性别补上max值
 data_train[which(data_train$company_type==""),"company_type"] = company_type_med # 为空的性别补上max值
 data_train[which(data_train$jobs==""),"jobs"] = jobs_med # 为空的性别补上max值
-data_train$train_hours=scale(data_train$train_hours)
+data_train$train_hours=scale(data_train$train_hours) # 数据归一化，为了和测试发展指数量纲统一
 
 # 查看序列数据情况
 unique(data$gender) # "Male"   "Female" "Other" 
@@ -69,6 +76,14 @@ sort(unique(data$expenience_year)) # "<1"  ">20" "1"   "10"  "11"  "12"  "13"  "
 unique(data$company_size) # "Others"    "50-99"     "<10"       "10000+"    "5000-9999" "1000-4999" "10/49"     "100-500"   "500-999" 
 unique(data$company_type) # "Pvt Ltd"             "Funded Startup"      "Early Stage Startup" "Other"               "Public Sector"       "NGO"              
 unique(data$jobs) # "1"     ">4"    "never" "4"     "3"     "2"    
+
+
+```
+
+## 数据分析
+
+
+```{r charts}
 
 
 # 统计函数
@@ -149,6 +164,13 @@ data_train$expenience_year=as.numeric(data_train$expenience_year)
 data_train$expenience_year_new = 1 * (data_train$expenience_year<=5) + 2 * (data_train$expenience_year>5 & data_train$expenience_year<=10) + 3 * (data_train$expenience_year >10 & data_train$expenience_year <= 15) + 4 * (data_train$expenience_year >15 & data_train$expenience_year <= 20) + 5 * (data_train$expenience_year > 20)
 
 
+```
+
+## 模型创建
+
+
+```{r models}
+
 # 建立回归模型
 # 空模型
 model.empty=glm(target~1,family=binomial(link=logit), data=data)	
@@ -186,18 +208,24 @@ roc.full=roc(data$target,pred.full)
 roc.aic=roc(data$target,pred.aic)
 roc.bic=roc(data$target,pred.bic)
 
-# 查看3个模型的结果, 目前全模型效果最好 0.7827171 0.7824730 0.7795770
+# 查看3个模型的结果, 目前全模型效果最好 0.7828684 0.7826137 0.7795770
 print(c(roc.full$auc,roc.aic$auc,roc.bic$auc))
 par(mfrow=c(1,3))
 plot(roc.full,main="Full model")
 plot(roc.aic,main="AIC")
 plot(roc.bic,main="BIC")
 
+```
 
+
+## 模型预测
+
+
+```{r predicts}
 # 模型预测
 par(mfrow=c(1,1))
 data_train$company_size=as.factor(data_train$company_size)
-p = predict(model.aic, data_train)  #利用模型glm1.a对数据a2进行预测
+p = predict(model.aic, data_train)  #利用模型aic对测试数据进行预测
 p = exp(p) / (1+exp(p))								#计算预测得到的概率
 data_train$pred=1*(p>0.5)								#以0.5为阈值生成预测值
 table(data_train[,c("target","pred")])								#计算预测值与真实值的2维频数表
@@ -239,7 +267,4 @@ for(k in 1:3){
 }
 legend(0.6,0.3,c("LOGIT FULL MODEL","LOGIT AIC MODEL", "LOGIT BIC MODEL"),lty=c(1:3),col=c(1:3),pch=c(1:3))	#为3个模型添加标示，区分3个模型
 
-
-
-
-
+```
