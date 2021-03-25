@@ -43,34 +43,34 @@ jobs_med=getmode(data[,10])  #获取表中jobs的众数
 train_hours_med=mean(data[,11])  #获取表中train_hours的平均数
 
 # 数据处理
-data[which(data$gender==""),"gender"] = gender_med # 为空的补上max值
-data[which(data$expenience==""),"expenience"] = expenience_med # 为空的补上max值
-data[which(data$university==""),"university"] = university_med # 为空的补上max值
-data[which(data$edu_level==""),"edu_level"] = edu_level_med # 为空的补上max值
-data[which(data$major==""),"major"] = major_med # 为空的补上max值
-data[which(data$expenience_year==""),"expenience_year"] = expenience_year_med # 为空的补上max值
-data[which(data$company_size==""),"company_size"] = company_size_med # 为空的补上max值
-data[which(data$company_type==""),"company_type"] = company_type_med # 为空的补上max值
-data[which(data$jobs==""),"jobs"] = jobs_med # 为空的补上max值
+data[which(data$gender==""),"gender"] = gender_med # 为空的补上众值
+data[which(data$expenience==""),"expenience"] = expenience_med # 为空的补上众值
+data[which(data$university==""),"university"] = university_med # 为空的补上众值
+data[which(data$edu_level==""),"edu_level"] = edu_level_med # 为空的补上众值
+data[which(data$major==""),"major"] = major_med # 为空的补上众值
+data[which(data$expenience_year==""),"expenience_year"] = expenience_year_med # 为空的补上众值
+data[which(data$company_size==""),"company_size"] = company_size_med # 为空的补上众值
+data[which(data$company_type==""),"company_type"] = company_type_med # 为空的补上众值
+data[which(data$jobs==""),"jobs"] = jobs_med # 为空的补上众值
 data$train_hours=scale(data$train_hours) # 数据归一化，为了和测试发展指数量纲统一
 
 # 测试数据
-data_train[which(data_train$gender==""),"gender"] = gender_med # 为空的补上max值
-data_train[which(data_train$expenience==""),"expenience"] = expenience_med # 为空的补上max值
-data_train[which(data_train$university==""),"university"] = university_med # 为空的补上max值
-data_train[which(data_train$edu_level==""),"edu_level"] = edu_level_med # 为空的性别补上max值
-data_train[which(data_train$major==""),"major"] = major_med # 为空的性别补上max值
-data_train[which(data_train$expenience_year==""),"expenience_year"] = expenience_year_med # 为空的性别补上max值
-data_train[which(data_train$company_size==""),"company_size"] = company_size_med # 为空的性别补上max值
-data_train[which(data_train$company_type==""),"company_type"] = company_type_med # 为空的性别补上max值
-data_train[which(data_train$jobs==""),"jobs"] = jobs_med # 为空的性别补上max值
+data_train[which(data_train$gender==""),"gender"] = gender_med # 为空的补上众值
+data_train[which(data_train$expenience==""),"expenience"] = expenience_med # 为空的补上众值
+data_train[which(data_train$university==""),"university"] = university_med # 为空的补上众值
+data_train[which(data_train$edu_level==""),"edu_level"] = edu_level_med # 为空的性别补上众值
+data_train[which(data_train$major==""),"major"] = major_med # 为空的性别补上众值
+data_train[which(data_train$expenience_year==""),"expenience_year"] = expenience_year_med # 为空的性别补上众值
+data_train[which(data_train$company_size==""),"company_size"] = company_size_med # 为空的性别补上众值
+data_train[which(data_train$company_type==""),"company_type"] = company_type_med # 为空的性别补上众值
+data_train[which(data_train$jobs==""),"jobs"] = jobs_med # 为空的性别补上众值
 data_train$train_hours=scale(data_train$train_hours) # 数据归一化，为了和测试发展指数量纲统一
 
 # 查看序列数据情况
 unique(data$gender) # "Male"   "Female" "Other" 
 unique(data$expenience) #  "Has relevent experience" "No relevent experience" 
 unique(data$university) # "no_enrollment"    "Full time course" "Part time course"
-unique(data$edu_level) # "Graduate"       "Masters"        "High School"    ""               "Phd"            "Primary School"
+unique(data$edu_level) # "Graduate"       "Masters"        "High School"     "Phd"            "Primary School"
 unique(data$major) # "STEM"            "Business Degree" "Arts"            "Humanities"      "No Major"        "Other"      
 sort(unique(data$expenience_year)) # "<1"  ">20" "1"   "10"  "11"  "12"  "13"  "14"  "15"  "16"  "17"  "18"  "19"  "2"   "20"  "3"   "4"   "5"   "6"   "7"   "8"   "9"  
 unique(data$company_size) # "Others"    "50-99"     "<10"       "10000+"    "5000-9999" "1000-4999" "10/49"     "100-500"   "500-999" 
@@ -118,11 +118,11 @@ barplot(table(data$major),xlab="major",main=NULL)
 # 工作经验，需要处理一下，具体看下面步骤
 barplot(table(data$expenience_year),xlab="expenience year",main=NULL)
 
-# 公司大小 绝大多数都是理工科
+# 公司大小
 barplot(table(data$company_size),xlab="company size",main=NULL)
 
 # 公司类型
-barplot(table(data$company_type),xlab="company size",main=NULL)
+barplot(table(data$company_type),xlab="company type",main=NULL)
 
 # 工作更换次数
 barplot(table(data$jobs),xlab="jobs",main=NULL)
@@ -181,8 +181,8 @@ summary(model.full)
 
 #计算空模型和全模型的方差分析
 anova(model.empty, model.full)							
-21519-19464 # 似然函数，残差平方和
-1-pchisq(2055, df=36) # P值为零，说明至少有一个变量起作用
+19258-16003 # 似然函数，残差平方和
+1-pchisq(3255.7, df=38) # P值为零，说明至少有一个变量起作用
 
 library(car) #载入程序包car
 # Type III SS 在软件里一般显示为Adjust SS，指的是，将p个变量纳入回归模型后，各个变量的额外贡献度（独立贡献度），
