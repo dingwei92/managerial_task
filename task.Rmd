@@ -1,5 +1,5 @@
 ---
-title: "task"
+title: "resign"
 output: html_document
 ---
 
@@ -42,6 +42,11 @@ company_type_med=getmode(data[,9])  #获取表中company_type的众数
 jobs_med=getmode(data[,10])  #获取表中jobs的众数
 train_hours_med=mean(data[,11])  #获取表中train_hours的平均数
 
+summary(data$target) 
+# 查看一看员工离职率的均值，目前是 0.249，也就是说，如果大于0.249。就有离职的可能性
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#  0.000   0.000   0.000   0.249   0.000   1.000 
+
 # 数据处理
 data[which(data$gender==""),"gender"] = gender_med # 为空的补上众值
 data[which(data$expenience==""),"expenience"] = expenience_med # 为空的补上众值
@@ -52,7 +57,7 @@ data[which(data$expenience_year==""),"expenience_year"] = expenience_year_med # 
 data[which(data$company_size==""),"company_size"] = company_size_med # 为空的补上众值
 data[which(data$company_type==""),"company_type"] = company_type_med # 为空的补上众值
 data[which(data$jobs==""),"jobs"] = jobs_med # 为空的补上众值
-data$train_hours=scale(data$train_hours) # 数据归一化，为了和测试发展指数量纲统一
+data$train_hours_scale=scale(log(data$train_hours)) # 先对数据进行对数计算，然后再进行标准化，为了和城市发展指数统一量纲
 
 # 测试数据
 data_train[which(data_train$gender==""),"gender"] = gender_med # 为空的补上众值
@@ -64,7 +69,7 @@ data_train[which(data_train$expenience_year==""),"expenience_year"] = expenience
 data_train[which(data_train$company_size==""),"company_size"] = company_size_med # 为空的性别补上众值
 data_train[which(data_train$company_type==""),"company_type"] = company_type_med # 为空的性别补上众值
 data_train[which(data_train$jobs==""),"jobs"] = jobs_med # 为空的性别补上众值
-data_train$train_hours=scale(data_train$train_hours) # 数据归一化，为了和测试发展指数量纲统一
+data_train$train_hours_scale=scale(log(data_train$train_hours)) # 数据归一化，为了和测试发展指数量纲统一
 
 # 查看序列数据情况
 unique(data$gender) # "Male"   "Female" "Other" 
@@ -101,34 +106,41 @@ descrb = function(var){
 
 # 序列类型数据频数
 # 性别 男性远远大于女性
-barplot(table(data$gender),xlab="gender",main=NULL)
+barplot(table(data$gender),xlab="gender", col=rainbow(3, alpha = 0.4))
 
 # 相关经验 有相关工作经验的比较多
-barplot(table(data$expenience),xlab="expenience",main=NULL)
+barplot(table(data$expenience),xlab="expenience", col=rainbow(2, alpha = 0.4))
 
 # 大学入学情况 很多都没有上大学
-barplot(table(data$university),xlab="university",main=NULL)
+barplot(table(data$university),xlab="university", col=rainbow(3, alpha = 0.4))
 
 # 教育水平
-barplot(table(data$edu_level),xlab="edu_level",main=NULL)
+barplot(table(data$edu_level),xlab="edu_level", col=rainbow(5, alpha = 0.4))
 
 # 专业
-barplot(table(data$major),xlab="major",main=NULL)
+barplot(table(data$major),xlab="major", col=rainbow(6, alpha = 0.4))
 
 # 工作经验，需要处理一下，具体看下面步骤
-barplot(table(data$expenience_year),xlab="expenience year",main=NULL)
+barplot(table(data$expenience_year),xlab="expenience year", col=rainbow(21, alpha = 0.4))
 
 # 公司大小
-barplot(table(data$company_size),xlab="company size",main=NULL)
+barplot(table(data$company_size),xlab="company size", col=rainbow(9, alpha = 0.4))
 
 # 公司类型
-barplot(table(data$company_type),xlab="company type",main=NULL)
+barplot(table(data$company_type),xlab="company type", col=rainbow(6, alpha = 0.4))
 
 # 工作更换次数
-barplot(table(data$jobs),xlab="jobs",main=NULL)
+barplot(table(data$jobs),xlab="jobs", col=rainbow(6, alpha = 0.4))
 
 # 数字类型数据情况
-barplot(table(data$train_hours),xlab="jobs",main=NULL)
+barplot(table(data$train_hours),xlab="train hours", col=rainbow(100, alpha = 0.4))
+boxplot(train_hours~target, data, ylab="train hours",xlab="target", col=rainbow(2, alpha = 0.4), outline=TRUE)
+boxplot(log(train_hours)~target, data, ylab="train hours",xlab="target", col=rainbow(2, alpha = 0.4), outline=TRUE)
+
+```
+
+
+```{r charts}
 
 # 培训时长
 descrb("gender")
@@ -148,11 +160,11 @@ data[which(data$expenience_year=="<1"),"expenience_year"] = 1 # 1年以下工作
 data[which(data$expenience_year==">20"),"expenience_year"] = 21 # 大于20用虚拟21来代替
 # 排序查看数据分别
 data$expenience_year=as.numeric(data$expenience_year)
-barplot(table(sort(data$expenience_year)),xlab="expenience year",main=NULL)
+barplot(table(sort(data$expenience_year)),xlab="expenience year", col=rainbow(21, alpha = 0.4))
 
 # 按照1-5，5-10，10-20，20+ 四个段进行数据划分
 data$expenience_year_new = 1 * (data$expenience_year<=5) + 2 * (data$expenience_year>5 & data$expenience_year<=10) + 3 * (data$expenience_year >10 & data$expenience_year <= 15) + 4 * (data$expenience_year >15 & data$expenience_year <= 20) + 5 * (data$expenience_year > 20)
-barplot(table(sort(data$expenience_year_new)),xlab="expenience year",main=NULL)
+barplot(table(sort(data$expenience_year_new)),xlab="expenience year", col=rainbow(4, alpha = 0.4))
 descrb("expenience_year_new")
 
 # 测试数据
@@ -211,9 +223,9 @@ roc.bic=roc(data$target,pred.bic)
 # 查看3个模型的结果, 目前全模型效果最好 0.7828684 0.7826137 0.7795770
 print(c(roc.full$auc,roc.aic$auc,roc.bic$auc))
 par(mfrow=c(1,3))
-plot(roc.full,main="Full model")
-plot(roc.aic,main="AIC")
-plot(roc.bic,main="BIC")
+plot(roc.full,main="Full model", col=1)
+plot(roc.aic,main="AIC", col=2)
+plot(roc.bic,main="BIC", col=3)
 
 ```
 
@@ -227,7 +239,7 @@ par(mfrow=c(1,1))
 data_train$company_size=as.factor(data_train$company_size)
 p = predict(model.aic, data_train)  #利用模型aic对测试数据进行预测
 p = exp(p) / (1+exp(p))								#计算预测得到的概率
-data_train$pred=1*(p>0.5)								#以0.5为阈值生成预测值
+data_train$pred=1*(p>0.249)								#以均值0.249为阈值生成预测值
 table(data_train[,c("target","pred")])								#计算预测值与真实值的2维频数表
 
 ngrids=500									#设置格点数为500
