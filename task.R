@@ -84,6 +84,8 @@ descrb = function(var){
   out
 }
 
+descrb("train_hours")
+
 # 序列类型数据频数
 # 性别 男性远远大于女性
 barplot(table(data$gender),xlab="gender",main=NULL)

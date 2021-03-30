@@ -3,18 +3,22 @@ title: "resign"
 output: html_document
 ---
 
-## 数据清理
+## 数据读取
+
+分别将训练和测试数据读取出来
 
 ```{r setup}
 #清理当前工作空间
 rm(list=ls())	
 
 #使用路径方法，解决写死路径的问题
-library(here)
+library(plyr)
+library(dplyr)
+library(ggplot2)
 
 #读取数据
-data=read.csv(here("aug_train.csv"),header=T)  #读取csv格式的数据，并赋值给data
-data_train=read.csv(here("aug_test.csv"),header=T)  #读取csv格式的数据，并赋值给data
+data=read.csv("aug_train.csv",header=T)  #读取csv格式的数据，并赋值给data
+data_train=read.csv("aug_test.csv",header=T)  #读取csv格式的数据，并赋值给data
 
 #数据清理，删除雇佣id和城市id，对于数据分析没有意义
 data=data[,-(1:2)]  #删除第1列到第2列的数据（-:代表删除（*，*）第1个*表示行，第2个*表示列）
@@ -29,6 +33,31 @@ getmode <- function(v) {
   uniqv[which.max(tabulate(match(v, uniqv)))] # 得到众数
 }
 
+
+# 统计函数
+descrb = function(var){
+  Z=data[,var]
+  N=tapply(data$target,Z,length)
+  MU=tapply(data$target,Z,mean)
+  SD=tapply(data$target,Z,sd)
+  MIN=tapply(data$target,Z,min)
+  MED=tapply(data$target,Z,median)
+  MAX=tapply(data$target,Z,max)
+  out=cbind(N,MU,SD,MIN,MED,MAX)
+  out
+}
+
+```
+
+
+## 数据预处理
+
+### 填充空白值
+
+对于数值类型变量，使用均值进行填充；对于分类变量，使用众数进行填充。
+这里我们得到了训练数据员工离职率的均值为0.249，后面进行预测的时候会以此阈值进行计算。
+
+```{r process}
 city_dev_avg=mean(data[,1])  #获取表中city_dev的平均数
 gender_med=getmode(data[,2])  #获取表中gender的众数
 expenience_med=getmode(data[,3])  #获取表中expenience的众数
@@ -57,7 +86,7 @@ data[which(data$expenience_year==""),"expenience_year"] = expenience_year_med # 
 data[which(data$company_size==""),"company_size"] = company_size_med # 为空的补上众值
 data[which(data$company_type==""),"company_type"] = company_type_med # 为空的补上众值
 data[which(data$jobs==""),"jobs"] = jobs_med # 为空的补上众值
-data$train_hours_scale=scale(log(data$train_hours)) # 先对数据进行对数计算，然后再进行标准化，为了和城市发展指数统一量纲
+data$train_hours_scale=log(data$train_hours) # 先对数据进行对数计算，然后再进行标准化，为了和城市发展指数统一量纲
 
 # 测试数据
 data_train[which(data_train$gender==""),"gender"] = gender_med # 为空的补上众值
@@ -69,7 +98,7 @@ data_train[which(data_train$expenience_year==""),"expenience_year"] = expenience
 data_train[which(data_train$company_size==""),"company_size"] = company_size_med # 为空的性别补上众值
 data_train[which(data_train$company_type==""),"company_type"] = company_type_med # 为空的性别补上众值
 data_train[which(data_train$jobs==""),"jobs"] = jobs_med # 为空的性别补上众值
-data_train$train_hours_scale=scale(log(data_train$train_hours)) # 数据归一化，为了和测试发展指数量纲统一
+data_train$train_hours_scale=log(data_train$train_hours) # 数据归一化，为了和测试发展指数量纲统一
 
 # 查看序列数据情况
 unique(data$gender) # "Male"   "Female" "Other" 
@@ -85,96 +114,367 @@ unique(data$jobs) # "1"     ">4"    "never" "4"     "3"     "2"
 
 ```
 
-## 数据分析
 
+### 数据合并
 
-```{r charts}
+对于数据量较小的样本，直接合并到Other里面去。
 
+```{r charts1}
 
-# 统计函数
-descrb = function(var){
-  Z=data[,var]
-  N=tapply(data$target,Z,length)
-  MU=tapply(data$target,Z,mean)
-  SD=tapply(data$target,Z,sd)
-  MIN=tapply(data$target,Z,min)
-  MED=tapply(data$target,Z,median)
-  MAX=tapply(data$target,Z,max)
-  out=cbind(N,MU,SD,MIN,MED,MAX)
-  out
-}
-
-# 序列类型数据频数
 # 性别 男性远远大于女性
+barplot(table(data$gender), xlab="gender", col=rainbow(3, alpha = 0.4))
+# 查看总样本占比
+gender_data <- data %>% 
+  group_by(gender) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+gender_data$label <- scales::percent(gender_data$per)
+label_gender = c("Fmale", "Male", "Other")
+ggplot(data=gender_data)+
+  geom_bar(aes(x="", y=per, fill=label_gender), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(gender))) + geom_bar(position = "fill")
+
+
+# 把Female改成Other
+data[which(data$gender=="Female"),"gender"] = "Other" 
+data_train[which(data_train$gender=="Female"),"gender"] = "Other"  
+
+# 重新查看处理后的效果
 barplot(table(data$gender),xlab="gender", col=rainbow(3, alpha = 0.4))
+gender_data <- data %>% 
+  group_by(gender) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+gender_data$label <- scales::percent(gender_data$per)
+label_gender = c("Male", "Other")
+ggplot(data=gender_data)+
+  geom_bar(aes(x="", y=per, fill=label_gender), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+ggplot(data, aes(factor(target), fill = factor(gender))) + geom_bar(position = "fill")
+```
+
+```{r charts2}
 
 # 相关经验 有相关工作经验的比较多
 barplot(table(data$expenience),xlab="expenience", col=rainbow(2, alpha = 0.4))
+# 查看总样本占比
+expenience_data <- data %>% 
+  group_by(expenience) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+expenience_data$label <- scales::percent(expenience_data$per)
+label_expenience = c("Has relevent experience", "No relevent experience")
+ggplot(data=expenience_data)+
+  geom_bar(aes(x="", y=per, fill=label_expenience), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(expenience))) + geom_bar(position = "fill")
+
+
+
+```
+
+```{r charts3}
+# 大学入学情况 很多都没有上大学
+barplot(table(data$university),xlab="university", col=rainbow(3, alpha = 0.4))
+# 查看总样本占比
+university_data <- data %>% 
+  group_by(university) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+university_data$label <- scales::percent(university_data$per)
+label_university = c("Full time course", "No enrollment",  "Part time course")
+ggplot(data=university_data)+
+  geom_bar(aes(x="", y=per, fill=label_university), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(university))) + geom_bar(position = "fill")
+
+# 把Fulltime和Partime合并,改成enrollment
+data[which(data$university=="Full time course" | data$university=="Part time course"),"university"] = "enrollment"
+data_train[which(data_train$university=="Full time course" | data_train$university=="Part time course"),"university"] = university_med 
 
 # 大学入学情况 很多都没有上大学
 barplot(table(data$university),xlab="university", col=rainbow(3, alpha = 0.4))
+# 查看总样本占比
+university_data <- data %>% 
+  group_by(university) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+university_data$label <- scales::percent(university_data$per)
+label_university = c("Enrollment", "No enrollment")
+ggplot(data=university_data)+
+  geom_bar(aes(x="", y=per, fill=label_university), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
 
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(university))) + geom_bar(position = "fill")
+
+
+```
+
+```{r charts4}
 # 教育水平
 barplot(table(data$edu_level),xlab="edu_level", col=rainbow(5, alpha = 0.4))
 
-# 专业
+# 查看总样本占比
+edu_level_data <- data %>% 
+  group_by(edu_level) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+edu_level_data$label <- scales::percent(edu_level_data$per)
+label_edu_level = c("Gradule", "High School", "Masters", "Phd", "Primay School")
+ggplot(data=edu_level_data)+
+  geom_bar(aes(x="", y=per, fill=label_edu_level), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(edu_level))) + geom_bar(position = "fill")
+
+
+```
+
+```{r charts5}
+
+# 专业大多数都是理工科
 barplot(table(data$major),xlab="major", col=rainbow(6, alpha = 0.4))
 
-# 工作经验，需要处理一下，具体看下面步骤
+# 查看总样本占比
+major_data <- data %>% 
+  group_by(major) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+major_data$label <- scales::percent(major_data$per)
+label_major = c("Arts", "Business Degree", "Humanities", "No Major", "Other", "STEM" )
+ggplot(data=major_data)+
+  geom_bar(aes(x="", y=per, fill=label_major), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(major))) + geom_bar(position = "fill")
+
+
+
+# 将其他专业数据都合并到Other    
+data[which(data$major=="Business Degree" | data$major=="Arts" | data$major=="Humanities" | data$major=="No Major"),"major"] = "Other"
+data_train[which(data_train$major=="Business Degree" | data_train$major=="Arts" | data_train$major=="Humanities" | data_train$major=="No Major"),"major"] = "Other"
+# 查看处理后的数据
+barplot(table(data$major),xlab="major", col=rainbow(6, alpha = 0.4))
+# 查看总样本占比
+major_data <- data %>% 
+  group_by(major) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+major_data$label <- scales::percent(major_data$per)
+label_major = c("Other", "STEM" )
+ggplot(data=major_data)+
+  geom_bar(aes(x="", y=per, fill=label_major), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(major))) + geom_bar(position = "fill")
+```
+
+```{r charts6}
+# 工作经验，基本上都是STEM理工科
 barplot(table(data$expenience_year),xlab="expenience year", col=rainbow(21, alpha = 0.4))
 
+# 通过分析，可以考虑将工作经验做离散化处理
+data[which(data$expenience_year=="<1"),"expenience_year"] = 0 # 1年以下工作经验归到0，认为没有工作经验
+data[which(data$expenience_year==">20"),"expenience_year"] = 21 # 大于20用虚拟21来代替
+
+# 排序查看数据分别
+data$expenience_year=as.numeric(data$expenience_year)
+barplot(table(sort(data$expenience_year)),xlab="expenience year", col=rainbow(21, alpha = 0.4))
+ggplot(data, aes(factor(target), fill = factor(expenience_year))) + geom_bar(position = "fill")
+
+
+# 按照1-5，5-10，10-20，20+ 四个段进行数据划分
+data$expenience_year_new = 1 * (data$expenience_year<1) + 2 * (data$expenience_year>=1 & data$expenience_year<=4) + 3 * (data$expenience_year >4)
+barplot(table(sort(data$expenience_year_new)),xlab="expenience year", col=rainbow(3, alpha = 0.4))
+
+expenience_year_new_data <- data %>% 
+  group_by(expenience_year_new) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+expenience_year_new_data$label <- scales::percent(expenience_year_new_data$per)
+
+label_expenience_year_new = c( "1-4", "4+", "Never" )
+ggplot(data=expenience_year_new_data)+
+  geom_bar(aes(x="", y=per, fill=label_expenience_year_new), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(expenience_year_new))) + geom_bar(position = "fill")
+
+
+# 测试数据
+data_train[which(data_train$expenience_year=="<1"),"expenience_year"] = 0
+data_train[which(data_train$expenience_year==">20"),"expenience_year"] = 21
+# 排序查看数据分别
+data_train$expenience_year=as.numeric(data_train$expenience_year)
+# 按照1-5，5-10，10-20，20+ 四个段进行数据划分
+data_train$expenience_year_new = 1 * (data_train$expenience_year<1) + 2 * (data_train$expenience_year>=1 & data_train$expenience_year<=4) + 3 * (data_train$expenience_year >4)
+
+
+```
+
+```{r charts7}
 # 公司大小
 barplot(table(data$company_size),xlab="company size", col=rainbow(9, alpha = 0.4))
 
+company_size_data <- data %>% 
+  group_by(company_size) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+company_size_data$label <- scales::percent(company_size_data$per)
+label_company_size = c("<10",  "10/49", "100-500", "1000-4999", "10000+", "50-99", "500-999",  "5000-9999", "Other")
+ggplot(data=company_size_data)+
+  geom_bar(aes(x="", y=per, fill=label_company_size), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(company_size))) + geom_bar(position = "fill")
+
+
+```
+
+```{r charts8}
 # 公司类型
 barplot(table(data$company_type),xlab="company type", col=rainbow(6, alpha = 0.4))
 
+company_type_data <- data %>% 
+  group_by(company_type) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+company_type_data$label <- scales::percent(company_type_data$per)
+label_company_size = c("Early Stage Startup",  "Funded Startup", "NGO", "Other", "Public Sector", "Pvt Ltd")
+ggplot(data=company_type_data)+
+  geom_bar(aes(x="", y=per, fill=label_company_size), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(company_type))) + geom_bar(position = "fill")
+
+# 数据处理
+data[which(data$company_type=="Funded Startup" | data$company_type=="Early Stage Startup" | data$company_type=="Public Sector" | data$company_type=="NGO"),"company_type"] = "Other"
+data_train[which(data_train$company_type=="Funded Startup" | data_train$company_type=="Early Stage Startup" | data_train$company_type=="Public Sector" | data_train$company_type=="NGO"),"company_type"] = "Other"
+# 查看数据情况
+barplot(table(data$company_type),xlab="company type", col=rainbow(6, alpha = 0.4))
+
+company_type_data <- data %>% 
+  group_by(company_type) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+company_type_data$label <- scales::percent(company_type_data$per)
+label_company_type = c("Other", "Pvt Ltd")
+ggplot(data=company_type_data)+
+  geom_bar(aes(x="", y=per, fill=label_company_type), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+ggplot(data, aes(factor(target), fill = factor(company_type))) + geom_bar(position = "fill")
+
+```
+
+```{r charts9}
 # 工作更换次数
 barplot(table(data$jobs),xlab="jobs", col=rainbow(6, alpha = 0.4))
 
+jobs_data <- data %>% 
+  group_by(jobs) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(per=`n`/sum(`n`)) 
+jobs_data$label <- scales::percent(jobs_data$per)
+label_jobs = c(">4",  "1", "2", "3", "4", "Never")
+ggplot(data=jobs_data)+
+  geom_bar(aes(x="", y=per, fill=label_jobs), stat="identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_void()+
+  geom_text(aes(x=1, y = cumsum(per) - per/2, label=label))
+
+# 查看离职情况的占比
+ggplot(data, aes(factor(target), fill = factor(jobs))) + geom_bar(position = "fill")
+
+
+```
+
+```{r charts10}
 # 数字类型数据情况
 barplot(table(data$train_hours),xlab="train hours", col=rainbow(100, alpha = 0.4))
+# 未take log之前，离群值较多
 boxplot(train_hours~target, data, ylab="train hours",xlab="target", col=rainbow(2, alpha = 0.4), outline=TRUE)
+# take log后，数据变的比较规范
 boxplot(log(train_hours)~target, data, ylab="train hours",xlab="target", col=rainbow(2, alpha = 0.4), outline=TRUE)
 
 ```
 
+### 导出处理后的数据
 
-```{r charts}
+```{r export}
 
-# 培训时长
+write.csv(data, "aug_train_after.csv", row.names = FALSE)
+
+```
+
+
+### 预处理后的数据情况
+
+```{r tables}
+
 descrb("gender")
 descrb("expenience")
 descrb("university")
 descrb("edu_level")
 descrb("major")
-descrb("expenience_year")
+descrb("expenience_year_new")
 descrb("company_size")
 descrb("company_type")
 descrb("jobs")
 descrb("train_hours")
-
-
-# 通过分析，可以考虑将工作经验做离散化处理
-data[which(data$expenience_year=="<1"),"expenience_year"] = 1 # 1年以下工作经验归到1年
-data[which(data$expenience_year==">20"),"expenience_year"] = 21 # 大于20用虚拟21来代替
-# 排序查看数据分别
-data$expenience_year=as.numeric(data$expenience_year)
-barplot(table(sort(data$expenience_year)),xlab="expenience year", col=rainbow(21, alpha = 0.4))
-
-# 按照1-5，5-10，10-20，20+ 四个段进行数据划分
-data$expenience_year_new = 1 * (data$expenience_year<=5) + 2 * (data$expenience_year>5 & data$expenience_year<=10) + 3 * (data$expenience_year >10 & data$expenience_year <= 15) + 4 * (data$expenience_year >15 & data$expenience_year <= 20) + 5 * (data$expenience_year > 20)
-barplot(table(sort(data$expenience_year_new)),xlab="expenience year", col=rainbow(4, alpha = 0.4))
-descrb("expenience_year_new")
-
-# 测试数据
-data_train[which(data_train$expenience_year=="<1"),"expenience_year"] = 1 # 1年以下工作经验归到1年
-data_train[which(data_train$expenience_year==">20"),"expenience_year"] = 21 # 大于20用虚拟21来代替
-# 排序查看数据分别
-data_train$expenience_year=as.numeric(data_train$expenience_year)
-# 按照1-5，5-10，10-20，20+ 四个段进行数据划分
-data_train$expenience_year_new = 1 * (data_train$expenience_year<=5) + 2 * (data_train$expenience_year>5 & data_train$expenience_year<=10) + 3 * (data_train$expenience_year >10 & data_train$expenience_year <= 15) + 4 * (data_train$expenience_year >15 & data_train$expenience_year <= 20) + 5 * (data_train$expenience_year > 20)
-
 
 ```
 
@@ -194,7 +494,7 @@ summary(model.full)
 #计算空模型和全模型的方差分析
 anova(model.empty, model.full)							
 19258-16003 # 似然函数，残差平方和
-1-pchisq(3255.7, df=38) # P值为零，说明至少有一个变量起作用
+1-pchisq(3255.7, df=26) # P值为零，说明至少有一个变量起作用
 
 library(car) #载入程序包car
 # Type III SS 在软件里一般显示为Adjust SS，指的是，将p个变量纳入回归模型后，各个变量的额外贡献度（独立贡献度），
@@ -220,7 +520,7 @@ roc.full=roc(data$target,pred.full)
 roc.aic=roc(data$target,pred.aic)
 roc.bic=roc(data$target,pred.bic)
 
-# 查看3个模型的结果, 目前全模型效果最好 0.7828684 0.7826137 0.7795770
+# 查看3个模型的结果, 目前全模型效果最好 0.7812451 0.7811417 0.7805449
 print(c(roc.full$auc,roc.aic$auc,roc.bic$auc))
 par(mfrow=c(1,3))
 plot(roc.full,main="Full model", col=1)
@@ -234,7 +534,7 @@ plot(roc.bic,main="BIC", col=3)
 
 
 ```{r predicts}
-# 模型预测
+# 模型预测，先用AIC查看一下效果
 par(mfrow=c(1,1))
 data_train$company_size=as.factor(data_train$company_size)
 p = predict(model.aic, data_train)  #利用模型aic对测试数据进行预测
